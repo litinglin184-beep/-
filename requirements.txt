@@ -1,0 +1,15 @@
+# 第 8 项（体育博彩）依赖清单
+# 实测环境：Windows 11 + Python 3.13.12
+# 安装：pip install -r requirements.txt
+
+pandas==3.1.0
+numpy==2.5.4
+matplotlib==3.11.2
+statsmodels==0.15.0      # ARIMA / 季节分解
+scipy==1.18.1
+scikit-learn==1.9.1      # K-Means / 轮廓系数
+pyecharts==2.1.0         # 交互大屏（生成 ECharts 配置）
+python-docx==1.2.0       # 生成 Word 论文
+Pillow==13.0.0           # 图片裁边、拼图
+openpyxl==3.1.5
+PyMuPDF==1.28.2          # 可选：docx→PDF 后逐页校验版式

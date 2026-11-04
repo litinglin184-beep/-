@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>足球博彩经营驾驶舱 | 商业数据分析大屏</title>
+<script src="echarts.min.js"></script>
+<style>
+  :root{--bg:#F2F5F9;--card:#fff;--ink:#1F2D3D;--muted:#7A8899;
+        --main:#1F4E79;--acc:#ED7D31;--line:#E3EAF2;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Microsoft YaHei","Segoe UI",Arial,sans-serif;}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+         padding:16px 26px 12px;background:linear-gradient(90deg,#123B2E,#1F6B4A);
+         color:#fff;box-shadow:0 2px 10px rgba(18,59,46,.22);}
+  header h1{margin:0;font-size:21px;letter-spacing:.5px;}
+  header .sub{font-size:12px;opacity:.88;margin-top:5px;}
+  .filters{display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+  .fgroup{display:flex;gap:6px;align-items:center;}
+  .fgroup span{font-size:12px;opacity:.88;}
+  select{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);
+         border-radius:15px;padding:6px 12px;font-size:12.5px;cursor:pointer;outline:none;}
+  select option{color:#1F2D3D;}
+  .wrap{padding:16px 26px 26px;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;}
+  .kpi{background:var(--card);border-radius:10px;padding:15px 18px;
+       box-shadow:0 1px 6px rgba(31,78,121,.08);border-left:4px solid var(--main);}
+  .kpi .t{font-size:12.5px;color:var(--muted);}
+  .kpi .v{font-size:25px;font-weight:bold;margin-top:5px;color:var(--main);}
+  .kpi .v small{font-size:12px;color:var(--muted);font-weight:normal;margin-left:4px;}
+  .kpi:nth-child(2){border-left-color:var(--acc);} .kpi:nth-child(2) .v{color:var(--acc);}
+  .kpi:nth-child(3){border-left-color:#2E9E9E;} .kpi:nth-child(3) .v{color:#2E9E9E;}
+  .kpi:nth-child(4){border-left-color:#C00000;} .kpi:nth-child(4) .v{color:#C00000;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .card{background:var(--card);border-radius:10px;padding:10px 12px;
+        box-shadow:0 1px 6px rgba(31,78,121,.08);}
+  .card.s2{grid-column:span 2;}
+  .chart{width:100%;height:300px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);}
+  th{background:#EEF3F9;color:var(--main);font-weight:600;position:sticky;top:0;font-size:12px;}
+  tbody tr:hover{background:#F7FAFE;}
+  .tbody-wrap{max-height:280px;overflow:auto;}
+  .tag{display:inline-block;padding:1px 8px;border-radius:9px;background:#EEF3F9;
+       color:var(--main);font-size:11px;margin-left:8px;font-weight:normal;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;}
+  footer{padding:8px 26px 24px;color:var(--muted);font-size:11.5px;line-height:1.7;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>五大联赛 + 荷甲/葡超 博彩定价驾驶舱</h1>
+    <div class="sub">数据源：Football-Data.co.uk｜2010/11–2024/25 共 15 季 × 7 联赛 = 105 个文件｜35,981 场有效比赛</div>
+  </div>
+  <div class="filters">
+    <div class="fgroup"><span>赛季：</span><select id="f_season"></select></div>
+    <div class="fgroup"><span>联赛：</span><select id="f_league"></select></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="kpis">
+    <div class="kpi"><div class="t">比赛场次（场）</div><div class="v" id="k_n">-</div></div>
+    <div class="kpi"><div class="t">场均进球（球）</div><div class="v" id="k_g">-</div></div>
+    <div class="kpi"><div class="t">平均抽水率</div><div class="v" id="k_v">-</div></div>
+    <div class="kpi"><div class="t">主胜率</div><div class="v" id="k_h">-</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card s2"><div class="chart" id="c_trend"></div></div>
+    <div class="card"><div class="chart" id="c_league"></div></div>
+    <div class="card"><div class="chart" id="c_result"></div></div>
+    <div class="card"><div class="chart" id="c_scatter"></div></div>
+    <div class="card"><div class="chart" id="c_roi"></div></div>
+    <div class="card s2"><div class="chart" id="c_forecast" style="height:280px"></div></div>
+    <div class="card s2">
+      <div style="font-size:14px;font-weight:bold;color:#1F2D3D;margin:4px 0 8px;">
+        联赛 × 赛季 经营明细 <span class="tag" id="tbl_tag">全部赛季 · 全部联赛</span>
+      </div>
+      <div class="tbody-wrap">
+        <table>
+          <thead><tr><th>赛季</th><th>联赛</th><th class="num">场次</th>
+            <th class="num">场均进球</th><th class="num">抽水率</th>
+            <th class="num">主胜率</th><th class="num">平局率</th><th class="num">大球率</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<footer>
+图23　交互式博彩定价驾驶舱（13 个组件、9 个参与联动）：① <b>赛季下拉</b> → KPI、趋势高亮、联赛横条、赛果堆叠、散点、ROI 条形、明细表共 7 类视图重算；② <b>联赛下拉</b> → 同上视图按该联赛重算，趋势图保持该联赛 15 季全历史以便对比；③ <b>点击联赛横条</b> → 明细表锁定该联赛下钻，再次点击取消；④ 抽水率预测图叠加 95% 置信区间。全部由 Python 生成 ECharts 配置，库已本地化，未使用 Power BI / Tableau。
+</footer>
+
+<script>
+const DATA = {"agg": [{"赛季": "2010/11", "联赛": "德甲", "场次": 306, "场均进球": 2.9216, "抽水率": 6.6245, "主胜率": 46.0784, "平局率": 20.5882, "客胜率": 33.3333, "大球率": 56.5359}, {"赛季": "2010/11", "联赛": "意甲", "场次": 380, "场均进球": 2.5132, "抽水率": 7.023, "主胜率": 47.1053, "平局率": 25.5263, "客胜率": 27.3684, "大球率": 45.2632}, {"赛季": "2010/11", "联赛": "法甲", "场次": 380, "场均进球": 2.3421, "抽水率": 7.4729, "主胜率": 41.3158, "平局率": 34.2105, "客胜率": 24.4737, "大球率": 41.5789}, {"赛季": "2010/11", "联赛": "英超", "场次": 380, "场均进球": 2.7974, "抽水率": 6.0921, "主胜率": 47.1053, "平局率": 29.2105, "客胜率": 23.6842, "大球率": 54.2105}, {"赛季": "2010/11", "联赛": "荷甲", "场次": 306, "场均进球": 3.2255, "抽水率": 8.3178, "主胜率": 52.2876, "平局率": 23.2026, "客胜率": 24.5098, "大球率": 62.4183}, {"赛季": "2010/11", "联赛": "葡超", "场次": 240, "场均进球": 2.4333, "抽水率": 8.7412, "主胜率": 42.0833, "平局率": 27.5, "客胜率": 30.4167, "大球率": 43.75}, {"赛季": "2010/11", "联赛": "西甲", "场次": 380, "场均进球": 2.7421, "抽水率": 6.6291, "主胜率": 51.8421, "平局率": 20.7895, "客胜率": 27.3684, "大球率": 53.6842}, {"赛季": "2011/12", "联赛": "德甲", "场次": 306, "场均进球": 2.8595, "抽水率": 6.5175, "主胜率": 45.4248, "平局率": 25.817, "客胜率": 28.7582, "大球率": 55.5556}, {"赛季": "2011/12", "联赛": "意甲", "场次": 380, "场均进球": 2.5579, "抽水率": 6.6453, "主胜率": 45.5263, "平局率": 29.2105, "客胜率": 25.2632, "大球率": 46.8421}, {"赛季": "2011/12", "联赛": "法甲", "场次": 380, "场均进球": 2.5158, "抽水率": 7.2413, "主胜率": 47.1053, "平局率": 28.4211, "客胜率": 24.4737, "大球率": 44.2105}, {"赛季": "2011/12", "联赛": "英超", "场次": 380, "场均进球": 2.8053, "抽水率": 6.0779, "主胜率": 45.0, "平局率": 24.4737, "客胜率": 30.5263, "大球率": 53.6842}, {"赛季": "2011/12", "联赛": "荷甲", "场次": 306, "场均进球": 3.2582, "抽水率": 8.2236, "主胜率": 50.6536, "平局率": 20.5882, "客胜率": 28.7582, "大球率": 61.1111}, {"赛季": "2011/12", "联赛": "葡超", "场次": 239, "场均进球": 2.6318, "抽水率": 8.4871, "主胜率": 48.1172, "平局率": 22.1757, "客胜率": 29.7071, "大球率": 52.3013}, {"赛季": "2011/12", "联赛": "西甲", "场次": 380, "场均进球": 2.7632, "抽水率": 6.5935, "主胜率": 49.4737, "平局率": 24.7368, "客胜率": 25.7895, "大球率": 54.2105}, {"赛季": "2012/13", "联赛": "德甲", "场次": 306, "场均进球": 2.9346, "抽水率": 6.0916, "主胜率": 42.4837, "平局率": 25.4902, "客胜率": 32.0261, "大球率": 55.5556}, {"赛季": "2012/13", "联赛": "意甲", "场次": 380, "场均进球": 2.6395, "抽水率": 6.3601, "主胜率": 46.5789, "平局率": 25.2632, "客胜率": 28.1579, "大球率": 47.8947}, {"赛季": "2012/13", "联赛": "法甲", "场次": 380, "场均进球": 2.5447, "抽水率": 6.7139, "主胜率": 44.7368, "平局率": 28.4211, "客胜率": 26.8421, "大球率": 46.0526}, {"赛季": "2012/13", "联赛": "英超", "场次": 380, "场均进球": 2.7974, "抽水率": 5.751, "主胜率": 43.6842, "平局率": 28.4211, "客胜率": 27.8947, "大球率": 55.7895}, {"赛季": "2012/13", "联赛": "荷甲", "场次": 306, "场均进球": 3.1503, "抽水率": 7.4484, "主胜率": 44.7712, "平局率": 25.4902, "客胜率": 29.7386, "大球率": 59.1503}, {"赛季": "2012/13", "联赛": "葡超", "场次": 240, "场均进球": 2.7792, "抽水率": 7.8524, "主胜率": 42.9167, "平局率": 25.4167, "客胜率": 31.6667, "大球率": 53.3333}, {"赛季": "2012/13", "联赛": "西甲", "场次": 380, "场均进球": 2.8711, "抽水率": 6.0858, "主胜率": 49.7368, "平局率": 22.1053, "客胜率": 28.1579, "大球率": 53.6842}, {"赛季": "2013/14", "联赛": "德甲", "场次": 306, "场均进球": 3.1601, "抽水率": 5.9853, "主胜率": 47.3856, "平局率": 20.915, "客胜率": 31.6993, "大球率": 61.1111}, {"赛季": "2013/14", "联赛": "意甲", "场次": 380, "场均进球": 2.7237, "抽水率": 6.0683, "主胜率": 47.6316, "平局率": 23.6842, "客胜率": 28.6842, "大球率": 49.2105}, {"赛季": "2013/14", "联赛": "法甲", "场次": 380, "场均进球": 2.4553, "抽水率": 6.4393, "主胜率": 44.2105, "平局率": 28.4211, "客胜率": 27.3684, "大球率": 43.6842}, {"赛季": "2013/14", "联赛": "英超", "场次": 380, "场均进球": 2.7684, "抽水率": 5.466, "主胜率": 47.1053, "平局率": 20.5263, "客胜率": 32.3684, "大球率": 51.5789}, {"赛季": "2013/14", "联赛": "荷甲", "场次": 306, "场均进球": 3.1961, "抽水率": 7.3039, "主胜率": 47.0588, "平局率": 27.451, "客胜率": 25.4902, "大球率": 64.3791}, {"赛季": "2013/14", "联赛": "葡超", "场次": 240, "场均进球": 2.3708, "抽水率": 7.5095, "主胜率": 45.0, "平局率": 25.0, "客胜率": 30.0, "大球率": 42.0833}, {"赛季": "2013/14", "联赛": "西甲", "场次": 380, "场均进球": 2.75, "抽水率": 5.9395, "主胜率": 47.1053, "平局率": 22.6316, "客胜率": 30.2632, "大球率": 52.6316}, {"赛季": "2014/15", "联赛": "德甲", "场次": 306, "场均进球": 2.7549, "抽水率": 5.406, "主胜率": 47.3856, "平局率": 26.7974, "客胜率": 25.817, "大球率": 51.3072}, {"赛季": "2014/15", "联赛": "意甲", "场次": 380, "场均进球": 2.6947, "抽水率": 5.4708, "主胜率": 40.0, "平局率": 31.5789, "客胜率": 28.4211, "大球率": 50.5263}, {"赛季": "2014/15", "联赛": "法甲", "场次": 380, "场均进球": 2.4921, "抽水率": 5.9314, "主胜率": 47.6316, "平局率": 23.1579, "客胜率": 29.2105, "大球率": 44.7368}, {"赛季": "2014/15", "联赛": "英超", "场次": 380, "场均进球": 2.5658, "抽水率": 4.9478, "主胜率": 45.2632, "平局率": 24.4737, "客胜率": 30.2632, "大球率": 48.4211}, {"赛季": "2014/15", "联赛": "荷甲", "场次": 306, "场均进球": 3.0784, "抽水率": 6.9199, "主胜率": 45.098, "平局率": 23.8562, "客胜率": 31.0458, "大球率": 58.4967}, {"赛季": "2014/15", "联赛": "葡超", "场次": 306, "场均进球": 2.4935, "抽水率": 7.2365, "主胜率": 44.7712, "平局率": 27.7778, "客胜率": 27.451, "大球率": 45.4248}, {"赛季": "2014/15", "联赛": "西甲", "场次": 380, "场均进球": 2.6553, "抽水率": 5.3803, "主胜率": 45.0, "平局率": 23.9474, "客胜率": 31.0526, "大球率": 48.4211}, {"赛季": "2015/16", "联赛": "德甲", "场次": 306, "场均进球": 2.8301, "抽水率": 5.4716, "主胜率": 44.1176, "平局率": 23.2026, "客胜率": 32.6797, "大球率": 55.8824}, {"赛季": "2015/16", "联赛": "意甲", "场次": 380, "场均进球": 2.5763, "抽水率": 5.5514, "主胜率": 46.0526, "平局率": 25.0, "客胜率": 28.9474, "大球率": 47.3684}, {"赛季": "2015/16", "联赛": "法甲", "场次": 380, "场均进球": 2.5263, "抽水率": 5.9152, "主胜率": 42.1053, "平局率": 28.4211, "客胜率": 29.4737, "大球率": 44.2105}, {"赛季": "2015/16", "联赛": "英超", "场次": 380, "场均进球": 2.7, "抽水率": 4.8502, "主胜率": 41.3158, "平局率": 28.1579, "客胜率": 30.5263, "大球率": 52.8947}, {"赛季": "2015/16", "联赛": "荷甲", "场次": 306, "场均进球": 2.9804, "抽水率": 6.8198, "主胜率": 44.7712, "平局率": 24.183, "客胜率": 31.0458, "大球率": 56.2092}, {"赛季": "2015/16", "联赛": "葡超", "场次": 306, "场均进球": 2.7157, "抽水率": 7.1336, "主胜率": 43.4641, "平局率": 24.8366, "客胜率": 31.6993, "大球率": 50.3268}, {"赛季": "2015/16", "联赛": "西甲", "场次": 380, "场均进球": 2.7447, "抽水率": 5.3968, "主胜率": 48.1579, "平局率": 24.2105, "客胜率": 27.6316, "大球率": 51.5789}, {"赛季": "2016/17", "联赛": "德甲", "场次": 306, "场均进球": 2.866, "抽水率": 4.8685, "主胜率": 49.0196, "平局率": 24.183, "客胜率": 26.7974, "大球率": 54.902}, {"赛季": "2016/17", "联赛": "意甲", "场次": 380, "场均进球": 2.9553, "抽水率": 5.0159, "主胜率": 48.4211, "平局率": 21.0526, "客胜率": 30.5263, "大球率": 58.1579}, {"赛季": "2016/17", "联赛": "法甲", "场次": 380, "场均进球": 2.6158, "抽水率": 5.4603, "主胜率": 48.9474, "平局率": 24.7368, "客胜率": 26.3158, "大球率": 48.6842}, {"赛季": "2016/17", "联赛": "英超", "场次": 380, "场均进球": 2.8, "抽水率": 4.2245, "主胜率": 49.2105, "平局率": 22.1053, "客胜率": 28.6842, "大球率": 54.2105}, {"赛季": "2016/17", "联赛": "荷甲", "场次": 306, "场均进球": 2.8889, "抽水率": 6.5415, "主胜率": 45.7516, "平局率": 23.8562, "客胜率": 30.3922, "大球率": 54.902}, {"赛季": "2016/17", "联赛": "葡超", "场次": 306, "场均进球": 2.3791, "抽水率": 6.3881, "主胜率": 44.4444, "平局率": 26.1438, "客胜率": 29.4118, "大球率": 44.4444}, {"赛季": "2016/17", "联赛": "西甲", "场次": 380, "场均进球": 2.9421, "抽水率": 4.8412, "主胜率": 47.6316, "平局率": 23.4211, "客胜率": 28.9474, "大球率": 56.3158}, {"赛季": "2017/18", "联赛": "德甲", "场次": 306, "场均进球": 2.7941, "抽水率": 5.038, "主胜率": 45.4248, "平局率": 27.1242, "客胜率": 27.451, "大球率": 51.9608}, {"赛季": "2017/18", "联赛": "意甲", "场次": 380, "场均进球": 2.6763, "抽水率": 5.1856, "主胜率": 43.1579, "平局率": 21.8421, "客胜率": 35.0, "大球率": 52.1053}, {"赛季": "2017/18", "联赛": "法甲", "场次": 380, "场均进球": 2.7184, "抽水率": 5.6236, "主胜率": 45.5263, "平局率": 25.2632, "客胜率": 29.2105, "大球率": 51.8421}, {"赛季": "2017/18", "联赛": "英超", "场次": 380, "场均进球": 2.6789, "抽水率": 4.5063, "主胜率": 45.5263, "平局率": 26.0526, "客胜率": 28.4211, "大球率": 51.0526}, {"赛季": "2017/18", "联赛": "荷甲", "场次": 306, "场均进球": 3.1373, "抽水率": 6.823, "主胜率": 44.7712, "平局率": 23.8562, "客胜率": 31.3725, "大球率": 62.7451}, {"赛季": "2017/18", "联赛": "葡超", "场次": 306, "场均进球": 2.6993, "抽水率": 7.0241, "主胜率": 51.634, "平局率": 19.9346, "客胜率": 28.4314, "大球率": 50.6536}, {"赛季": "2017/18", "联赛": "西甲", "场次": 380, "场均进球": 2.6947, "抽水率": 5.0346, "主胜率": 47.1053, "平局率": 22.6316, "客胜率": 30.2632, "大球率": 50.5263}, {"赛季": "2018/19", "联赛": "德甲", "场次": 306, "场均进球": 3.1797, "抽水率": 4.7019, "主胜率": 45.098, "平局率": 23.8562, "客胜率": 31.0458, "大球率": 62.4183}, {"赛季": "2018/19", "联赛": "意甲", "场次": 380, "场均进球": 2.6816, "抽水率": 4.8142, "主胜率": 43.6842, "平局率": 28.4211, "客胜率": 27.8947, "大球率": 51.8421}, {"赛季": "2018/19", "联赛": "法甲", "场次": 380, "场均进球": 2.5579, "抽水率": 5.0442, "主胜率": 43.1579, "平局率": 28.9474, "客胜率": 27.8947, "大球率": 48.1579}, {"赛季": "2018/19", "联赛": "英超", "场次": 380, "场均进球": 2.8211, "抽水率": 4.1868, "主胜率": 47.6316, "平局率": 18.6842, "客胜率": 33.6842, "大球率": 53.6842}, {"赛季": "2018/19", "联赛": "荷甲", "场次": 306, "场均进球": 3.4673, "抽水率": 6.0759, "主胜率": 50.3268, "平局率": 19.6078, "客胜率": 30.0654, "大球率": 66.0131}, {"赛季": "2018/19", "联赛": "葡超", "场次": 306, "场均进球": 2.6993, "抽水率": 6.3964, "主胜率": 46.732, "平局率": 20.2614, "客胜率": 33.0065, "大球率": 48.6928}, {"赛季": "2018/19", "联赛": "西甲", "场次": 380, "场均进球": 2.5868, "抽水率": 4.7382, "主胜率": 44.2105, "平局率": 28.9474, "客胜率": 26.8421, "大球率": 47.1053}, {"赛季": "2019/20", "联赛": "德甲", "场次": 306, "场均进球": 3.2092, "抽水率": 4.8201, "主胜率": 40.1961, "平局率": 22.2222, "客胜率": 37.5817, "大球率": 65.0327}, {"赛季": "2019/20", "联赛": "意甲", "场次": 380, "场均进球": 3.0368, "抽水率": 5.0318, "主胜率": 41.5789, "平局率": 22.3684, "客胜率": 36.0526, "大球率": 62.8947}, {"赛季": "2019/20", "联赛": "法甲", "场次": 279, "场均进球": 2.5233, "抽水率": 5.2101, "主胜率": 48.0287, "平局率": 25.0896, "客胜率": 26.8817, "大球率": 47.3118}, {"赛季": "2019/20", "联赛": "英超", "场次": 380, "场均进球": 2.7211, "抽水率": 4.2716, "主胜率": 45.2632, "平局率": 24.2105, "客胜率": 30.5263, "大球率": 52.1053}, {"赛季": "2019/20", "联赛": "荷甲", "场次": 232, "场均进球": 3.0819, "抽水率": 6.1109, "主胜率": 51.7241, "平局率": 21.1207, "客胜率": 27.1552, "大球率": 60.3448}, {"赛季": "2019/20", "联赛": "葡超", "场次": 306, "场均进球": 2.4935, "抽水率": 6.6854, "主胜率": 41.1765, "平局率": 25.817, "客胜率": 33.0065, "大球率": 44.1176}, {"赛季": "2019/20", "联赛": "西甲", "场次": 380, "场均进球": 2.4789, "抽水率": 4.8224, "主胜率": 45.7895, "平局率": 27.6316, "客胜率": 26.5789, "大球率": 45.5263}, {"赛季": "2020/21", "联赛": "德甲", "场次": 306, "场均进球": 3.0327, "抽水率": 4.7312, "主胜率": 42.1569, "平局率": 26.4706, "客胜率": 31.3725, "大球率": 58.8235}, {"赛季": "2020/21", "联赛": "意甲", "场次": 380, "场均进球": 3.0526, "抽水率": 4.8148, "主胜率": 40.7895, "平局率": 25.5263, "客胜率": 33.6842, "大球率": 56.5789}, {"赛季": "2020/21", "联赛": "法甲", "场次": 380, "场均进球": 2.7605, "抽水率": 5.129, "主胜率": 37.3684, "平局率": 25.0, "客胜率": 37.6316, "大球率": 54.2105}, {"赛季": "2020/21", "联赛": "英超", "场次": 380, "场均进球": 2.6947, "抽水率": 4.3466, "主胜率": 37.8947, "平局率": 21.8421, "客胜率": 40.2632, "大球率": 50.0}, {"赛季": "2020/21", "联赛": "荷甲", "场次": 306, "场均进球": 3.0065, "抽水率": 6.0206, "主胜率": 41.1765, "平局率": 25.4902, "客胜率": 33.3333, "大球率": 56.5359}, {"赛季": "2020/21", "联赛": "葡超", "场次": 306, "场均进球": 2.415, "抽水率": 6.3964, "主胜率": 41.5033, "平局率": 25.1634, "客胜率": 33.3333, "大球率": 44.1176}, {"赛季": "2020/21", "联赛": "西甲", "场次": 380, "场均进球": 2.5079, "抽水率": 4.7501, "主胜率": 41.5789, "平局率": 28.6842, "客胜率": 29.7368, "大球率": 43.9474}, {"赛季": "2021/22", "联赛": "德甲", "场次": 306, "场均进球": 3.1176, "抽水率": 4.3519, "主胜率": 46.732, "平局率": 23.8562, "客胜率": 29.4118, "大球率": 58.4967}, {"赛季": "2021/22", "联赛": "意甲", "场次": 379, "场均进球": 2.8628, "抽水率": 4.4902, "主胜率": 38.7863, "平局率": 25.8575, "客胜率": 35.3562, "大球率": 55.6728}, {"赛季": "2021/22", "联赛": "法甲", "场次": 380, "场均进球": 2.8079, "抽水率": 4.7506, "主胜率": 42.6316, "平局率": 26.8421, "客胜率": 30.5263, "大球率": 50.2632}, {"赛季": "2021/22", "联赛": "英超", "场次": 380, "场均进球": 2.8184, "抽水率": 4.0686, "主胜率": 42.8947, "平局率": 23.1579, "客胜率": 33.9474, "大球率": 53.9474}, {"赛季": "2021/22", "联赛": "荷甲", "场次": 306, "场均进球": 2.8595, "抽水率": 5.5675, "主胜率": 43.1373, "平局率": 20.915, "客胜率": 35.9477, "大球率": 55.2288}, {"赛季": "2021/22", "联赛": "葡超", "场次": 306, "场均进球": 2.6373, "抽水率": 6.0136, "主胜率": 39.5425, "平局率": 28.4314, "客胜率": 32.0261, "大球率": 49.0196}, {"赛季": "2021/22", "联赛": "西甲", "场次": 380, "场均进球": 2.5026, "抽水率": 4.4454, "主胜率": 43.4211, "平局率": 29.2105, "客胜率": 27.3684, "大球率": 44.4737}, {"赛季": "2022/23", "联赛": "德甲", "场次": 306, "场均进球": 3.1732, "抽水率": 4.2684, "主胜率": 47.3856, "平局率": 24.5098, "客胜率": 28.1046, "大球率": 60.4575}, {"赛季": "2022/23", "联赛": "意甲", "场次": 380, "场均进球": 2.5632, "抽水率": 4.5229, "主胜率": 42.3684, "平局率": 26.3158, "客胜率": 31.3158, "大球率": 45.5263}, {"赛季": "2022/23", "联赛": "法甲", "场次": 380, "场均进球": 2.8079, "抽水率": 4.7632, "主胜率": 42.8947, "平局率": 24.2105, "客胜率": 32.8947, "大球率": 56.3158}, {"赛季": "2022/23", "联赛": "英超", "场次": 380, "场均进球": 2.8526, "抽水率": 4.0655, "主胜率": 48.4211, "平局率": 22.8947, "客胜率": 28.6842, "大球率": 52.6316}, {"赛季": "2022/23", "联赛": "荷甲", "场次": 306, "场均进球": 3.0556, "抽水率": 5.6615, "主胜率": 44.7712, "平局率": 23.8562, "客胜率": 31.3725, "大球率": 59.4771}, {"赛季": "2022/23", "联赛": "葡超", "场次": 306, "场均进球": 2.4935, "抽水率": 5.8215, "主胜率": 49.0196, "平局率": 17.9739, "客胜率": 33.0065, "大球率": 47.7124}, {"赛季": "2022/23", "联赛": "西甲", "场次": 380, "场均进球": 2.5132, "抽水率": 4.3749, "主胜率": 47.8947, "平局率": 23.4211, "客胜率": 28.6842, "大球率": 47.6316}, {"赛季": "2023/24", "联赛": "德甲", "场次": 306, "场均进球": 3.219, "抽水率": 4.201, "主胜率": 43.7908, "平局率": 26.4706, "客胜率": 29.7386, "大球率": 62.4183}, {"赛季": "2023/24", "联赛": "意甲", "场次": 380, "场均进球": 2.6105, "抽水率": 4.5299, "主胜率": 41.8421, "平局率": 29.4737, "客胜率": 28.6842, "大球率": 49.2105}, {"赛季": "2023/24", "联赛": "法甲", "场次": 306, "场均进球": 2.6993, "抽水率": 4.6816, "主胜率": 39.2157, "平局率": 26.4706, "客胜率": 34.3137, "大球率": 52.9412}, {"赛季": "2023/24", "联赛": "英超", "场次": 380, "场均进球": 3.2789, "抽水率": 4.14, "主胜率": 46.0526, "平局率": 21.5789, "客胜率": 32.3684, "大球率": 64.7368}, {"赛季": "2023/24", "联赛": "荷甲", "场次": 306, "场均进球": 3.2418, "抽水率": 5.6256, "主胜率": 43.1373, "平局率": 24.8366, "客胜率": 32.0261, "大球率": 63.7255}, {"赛季": "2023/24", "联赛": "葡超", "场次": 306, "场均进球": 2.866, "抽水率": 5.5742, "主胜率": 43.4641, "平局率": 24.5098, "客胜率": 32.0261, "大球率": 55.2288}, {"赛季": "2023/24", "联赛": "西甲", "场次": 380, "场均进球": 2.6447, "抽水率": 4.3154, "主胜率": 43.9474, "平局率": 28.1579, "客胜率": 27.8947, "大球率": 46.0526}, {"赛季": "2024/25", "联赛": "德甲", "场次": 306, "场均进球": 3.134, "抽水率": 4.6907, "主胜率": 38.5621, "平局率": 25.1634, "客胜率": 36.2745, "大球率": 59.8039}, {"赛季": "2024/25", "联赛": "意甲", "场次": 380, "场均进球": 2.5605, "抽水率": 4.8955, "主胜率": 39.7368, "平局率": 28.4211, "客胜率": 31.8421, "大球率": 48.1579}, {"赛季": "2024/25", "联赛": "法甲", "场次": 306, "场均进球": 2.9771, "抽水率": 5.0501, "主胜率": 46.732, "平局率": 20.2614, "客胜率": 33.0065, "大球率": 55.5556}, {"赛季": "2024/25", "联赛": "英超", "场次": 380, "场均进球": 2.9342, "抽水率": 4.4947, "主胜率": 40.7895, "平局率": 24.4737, "客胜率": 34.7368, "大球率": 56.5789}, {"赛季": "2024/25", "联赛": "荷甲", "场次": 306, "场均进球": 2.9869, "抽水率": 5.9698, "主胜率": 45.4248, "平局率": 25.1634, "客胜率": 29.4118, "大球率": 55.2288}, {"赛季": "2024/25", "联赛": "葡超", "场次": 306, "场均进球": 2.5686, "抽水率": 6.1453, "主胜率": 43.1373, "平局率": 25.817, "客胜率": 31.0458, "大球率": 49.0196}, {"赛季": "2024/25", "联赛": "西甲", "场次": 380, "场均进球": 2.6184, "抽水率": 4.7491, "主胜率": 44.4737, "平局率": 25.5263, "客胜率": 30.0, "大球率": 48.6842}], "roi": [{"赛季": "2010/11", "档位": "冷门局", "ROI": -6.96}, {"赛季": "2011/12", "档位": "冷门局", "ROI": -6.26}, {"赛季": "2012/13", "档位": "冷门局", "ROI": -2.35}, {"赛季": "2013/14", "档位": "冷门局", "ROI": -6.75}, {"赛季": "2014/15", "档位": "冷门局", "ROI": -5.73}, {"赛季": "2015/16", "档位": "冷门局", "ROI": -10.97}, {"赛季": "2016/17", "档位": "冷门局", "ROI": -3.4}, {"赛季": "2017/18", "档位": "冷门局", "ROI": -4.65}, {"赛季": "2018/19", "档位": "冷门局", "ROI": -11.75}, {"赛季": "2019/20", "档位": "冷门局", "ROI": -6.18}, {"赛季": "2020/21", "档位": "冷门局", "ROI": -5.5}, {"赛季": "2021/22", "档位": "冷门局", "ROI": -8.92}, {"赛季": "2022/23", "档位": "冷门局", "ROI": 6.06}, {"赛季": "2023/24", "档位": "冷门局", "ROI": -2.86}, {"赛季": "2024/25", "档位": "冷门局", "ROI": -6.49}, {"赛季": "2010/11", "档位": "偏冷", "ROI": 2.49}, {"赛季": "2011/12", "档位": "偏冷", "ROI": -3.77}, {"赛季": "2012/13", "档位": "偏冷", "ROI": -4.67}, {"赛季": "2013/14", "档位": "偏冷", "ROI": -0.63}, {"赛季": "2014/15", "档位": "偏冷", "ROI": -6.16}, {"赛季": "2015/16", "档位": "偏冷", "ROI": -6.74}, {"赛季": "2016/17", "档位": "偏冷", "ROI": 6.89}, {"赛季": "2017/18", "档位": "偏冷", "ROI": -2.11}, {"赛季": "2018/19", "档位": "偏冷", "ROI": -6.23}, {"赛季": "2019/20", "档位": "偏冷", "ROI": 0.28}, {"赛季": "2020/21", "档位": "偏冷", "ROI": -3.99}, {"赛季": "2021/22", "档位": "偏冷", "ROI": -8.28}, {"赛季": "2022/23", "档位": "偏冷", "ROI": -1.54}, {"赛季": "2023/24", "档位": "偏冷", "ROI": -1.4}, {"赛季": "2024/25", "档位": "偏冷", "ROI": -4.32}, {"赛季": "2010/11", "档位": "偏热", "ROI": -6.6}, {"赛季": "2011/12", "档位": "偏热", "ROI": -5.36}, {"赛季": "2012/13", "档位": "偏热", "ROI": -6.06}, {"赛季": "2013/14", "档位": "偏热", "ROI": -3.3}, {"赛季": "2014/15", "档位": "偏热", "ROI": 0.57}, {"赛季": "2015/16", "档位": "偏热", "ROI": -2.15}, {"赛季": "2016/17", "档位": "偏热", "ROI": 5.15}, {"赛季": "2017/18", "档位": "偏热", "ROI": 0.55}, {"赛季": "2018/19", "档位": "偏热", "ROI": -6.0}, {"赛季": "2019/20", "档位": "偏热", "ROI": -6.05}, {"赛季": "2020/21", "档位": "偏热", "ROI": -3.23}, {"赛季": "2021/22", "档位": "偏热", "ROI": -5.46}, {"赛季": "2022/23", "档位": "偏热", "ROI": 1.67}, {"赛季": "2023/24", "档位": "偏热", "ROI": 0.86}, {"赛季": "2024/25", "档位": "偏热", "ROI": -2.26}, {"赛季": "2010/11", "档位": "大热", "ROI": -8.2}, {"赛季": "2011/12", "档位": "大热", "ROI": -3.13}, {"赛季": "2012/13", "档位": "大热", "ROI": -1.74}, {"赛季": "2013/14", "档位": "大热", "ROI": -1.92}, {"赛季": "2014/15", "档位": "大热", "ROI": -6.1}, {"赛季": "2015/16", "档位": "大热", "ROI": -1.77}, {"赛季": "2016/17", "档位": "大热", "ROI": -1.25}, {"赛季": "2017/18", "档位": "大热", "ROI": -1.43}, {"赛季": "2018/19", "档位": "大热", "ROI": 3.08}, {"赛季": "2019/20", "档位": "大热", "ROI": -2.81}, {"赛季": "2020/21", "档位": "大热", "ROI": -0.11}, {"赛季": "2021/22", "档位": "大热", "ROI": 0.72}, {"赛季": "2022/23", "档位": "大热", "ROI": -1.59}, {"赛季": "2023/24", "档位": "大热", "ROI": 0.79}, {"赛季": "2024/25", "档位": "大热", "ROI": -4.48}], "forecast": {"backgroundColor": "transparent", "animation": true, "animationThreshold": 2000, "animationDuration": 1000, "animationEasing": "cubicOut", "animationDelay": 0, "animationDurationUpdate": 300, "animationEasingUpdate": "cubicOut", "animationDelayUpdate": 0, "aria": {"enabled": false}, "series": [{"type": "line", "name": "下界", "connectNulls": false, "xAxisIndex": 0, "symbol": "none", "symbolSize": 4, "showSymbol": true, "smooth": false, "clip": true, "step": false, "stack": "ci", "stackStrategy": "samesign", "data": [["2022-02", null], ["2022-03", null], ["2022-04", null], ["2022-05", null], ["2022-08", null], ["2022-09", null], ["2022-10", null], ["2022-11", null], ["2022-12", null], ["2023-01", null], ["2023-02", null], ["2023-03", null], ["2023-04", null], ["2023-05", null], ["2023-06", null], ["2023-08", null], ["2023-09", null], ["2023-10", null], ["2023-11", null], ["2023-12", null], ["2024-01", null], ["2024-02", null], ["2024-03", null], ["2024-04", null], ["2024-05", null], ["2024-06", null], ["2024-08", null], ["2024-09", null], ["2024-10", null], ["2024-11", null], ["2024-12", null], ["2025-01", null], ["2025-02", null], ["2025-03", null], ["2025-04", null], ["2025-05", 5.38], ["2025-06", 5.03], ["2025-07", 4.96], ["2025-08", 4.91], ["2025-09", 4.86], ["2025-10", 4.81], ["2025-11", 4.77]], "hoverAnimation": true, "label": {"show": false, "margin": 8, "richInheritPlainLabel": true, "valueAnimation": false}, "logBase": 10, "seriesLayoutBy": "column", "lineStyle": {"show": false, "opacity": 0}, "areaStyle": {"opacity": 0}, "zlevel": 0, "z": 0, "color": "#EAF1F8"}, {"type": "line", "name": "95% 置信区间", "connectNulls": false, "xAxisIndex": 0, "symbol": "none", "symbolSize": 4, "showSymbol": true, "smooth": false, "clip": true, "step": false, "stack": "ci", "stackStrategy": "samesign", "data": [["2022-02", null], ["2022-03", null], ["2022-04", null], ["2022-05", null], ["2022-08", null], ["2022-09", null], ["2022-10", null], ["2022-11", null], ["2022-12", null], ["2023-01", null], ["2023-02", null], ["2023-03", null], ["2023-04", null], ["2023-05", null], ["2023-06", null], ["2023-08", null], ["2023-09", null], ["2023-10", null], ["2023-11", null], ["2023-12", null], ["2024-01", null], ["2024-02", null], ["2024-03", null], ["2024-04", null], ["2024-05", null], ["2024-06", null], ["2024-08", null], ["2024-09", null], ["2024-10", null], ["2024-11", null], ["2024-12", null], ["2025-01", null], ["2025-02", null], ["2025-03", null], ["2025-04", null], ["2025-05", 0], ["2025-06", 0.65], ["2025-07", 0.79], ["2025-08", 0.9], ["2025-09", 1.0], ["2025-10", 1.09], ["2025-11", 1.17]], "hoverAnimation": true, "label": {"show": false, "margin": 8, "richInheritPlainLabel": true, "valueAnimation": false}, "logBase": 10, "seriesLayoutBy": "column", "lineStyle": {"show": false, "opacity": 0}, "areaStyle": {"opacity": 0.3, "color": "#9DC3E6"}, "zlevel": 0, "z": 0, "color": "#9DC3E6"}, {"type": "line", "name": "历史抽水率", "connectNulls": false, "xAxisIndex": 0, "symbolSize": 3.5, "showSymbol": true, "smooth": false, "clip": true, "step": false, "stackStrategy": "samesign", "data": [["2022-02", 4.74], ["2022-03", 4.66], ["2022-04", 4.6], ["2022-05", 4.61], ["2022-08", 4.71], ["2022-09", 4.75], ["2022-10", 4.75], ["2022-11", 4.76], ["2022-12", 4.53], ["2023-01", 4.78], ["2023-02", 4.74], ["2023-03", 4.8], ["2023-04", 4.74], ["2023-05", 4.7], ["2023-06", 4.69], ["2023-08", 4.73], ["2023-09", 4.69], ["2023-10", 4.48], ["2023-11", 4.52], ["2023-12", 4.5], ["2024-01", 4.78], ["2024-02", 4.77], ["2024-03", 4.79], ["2024-04", 4.77], ["2024-05", 4.84], ["2024-06", 4.96], ["2024-08", 4.92], ["2024-09", 4.76], ["2024-10", 4.74], ["2024-11", 4.86], ["2024-12", 5.16], ["2025-01", 5.3], ["2025-02", 5.12], ["2025-03", 5.25], ["2025-04", 5.35], ["2025-05", 5.38]], "hoverAnimation": true, "label": {"show": false, "margin": 8, "richInheritPlainLabel": true, "valueAnimation": false}, "logBase": 10, "seriesLayoutBy": "column", "lineStyle": {"show": false, "width": 2, "color": "#1F4E79"}, "areaStyle": {"opacity": 0}, "itemStyle": {"color": "#1F4E79"}, "zlevel": 0, "z": 0, "color": "#1F4E79"}, {"type": "line", "name": "ARIMA 点预测", "connectNulls": false, "xAxisIndex": 0, "symbolSize": 5, "showSymbol": true, "smooth": true, "clip": true, "step": false, "stackStrategy": "samesign", "data": [["2022-02", null], ["2022-03", null], ["2022-04", null], ["2022-05", null], ["2022-08", null], ["2022-09", null], ["2022-10", null], ["2022-11", null], ["2022-12", null], ["2023-01", null], ["2023-02", null], ["2023-03", null], ["2023-04", null], ["2023-05", null], ["2023-06", null], ["2023-08", null], ["2023-09", null], ["2023-10", null], ["2023-11", null], ["2023-12", null], ["2024-01", null], ["2024-02", null], ["2024-03", null], ["2024-04", null], ["2024-05", null], ["2024-06", null], ["2024-08", null], ["2024-09", null], ["2024-10", null], ["2024-11", null], ["2024-12", null], ["2025-01", null], ["2025-02", null], ["2025-03", null], ["2025-04", null], ["2025-05", 5.38], ["2025-06", 5.36], ["2025-07", 5.36], ["2025-08", 5.36], ["2025-09", 5.36], ["2025-10", 5.36], ["2025-11", 5.36]], "hoverAnimation": true, "label": {"show": false, "margin": 8, "richInheritPlainLabel": true, "valueAnimation": false}, "logBase": 10, "seriesLayoutBy": "column", "lineStyle": {"show": false, "width": 2.4, "type": "dashed", "color": "#ED7D31"}, "areaStyle": {"opacity": 0}, "itemStyle": {"color": "#ED7D31"}, "zlevel": 0, "z": 0, "color": "#ED7D31"}], "legend": [{"data": ["历史抽水率", "ARIMA 点预测", "95% 置信区间"], "selected": {}, "show": true, "right": "2%", "top": "0%", "padding": 5, "itemGap": 12, "itemWidth": 25, "itemHeight": 14, "textStyle": {"fontSize": 10, "richInheritPlainLabel": true}, "backgroundColor": "transparent", "borderColor": "#ccc", "borderRadius": 0, "pageButtonItemGap": 5, "pageButtonPosition": "end", "pageFormatter": "{current}/{total}", "pageIconColor": "#2f4554", "pageIconInactiveColor": "#aaa", "pageIconSize": 15, "animationDurationUpdate": 800, "selector": false, "selectorPosition": "auto", "selectorItemGap": 7, "selectorButtonGap": 10, "triggerEvent": false}], "tooltip": {"show": true, "trigger": "axis", "triggerOn": "mousemove|click", "axisPointer": {"type": "line"}, "showContent": true, "alwaysShowContent": false, "showDelay": 0, "hideDelay": 100, "enterable": false, "confine": false, "appendToBody": false, "transitionDuration": 0.4, "displayTransition": true, "textStyle": {"fontSize": 14, "richInheritPlainLabel": true}, "borderWidth": 0, "padding": 5, "order": "seriesAsc"}, "xAxis": [{"show": true, "scale": false, "nameLocation": "end", "nameGap": 15, "nameTruncate": {}, "nameMoveOverlap": true, "axisLabel": {"show": true, "rotate": 45, "margin": 8, "fontSize": 8, "richInheritPlainLabel": true, "valueAnimation": false}, "inverse": false, "offset": 0, "splitNumber": 5, "minInterval": 0, "silent": false, "triggerEvent": false, "splitLine": {"show": true, "lineStyle": {"show": false}}, "animation": true, "animationThreshold": 2000, "animationDuration": 1000, "animationEasing": "cubicOut", "animationDelay": 0, "animationDurationUpdate": 300, "animationEasingUpdate": "cubicOut", "animationDelayUpdate": 0, "data": ["2022-02", "2022-03", "2022-04", "2022-05", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11"]}], "yAxis": [{"show": true, "scale": false, "nameLocation": "end", "nameGap": 15, "nameTruncate": {}, "nameMoveOverlap": true, "axisLabel": {"show": true, "margin": 8, "fontSize": 9, "formatter": "{value}%", "richInheritPlainLabel": true, "valueAnimation": false}, "inverse": false, "offset": 0, "splitNumber": 5, "min": 4.2, "max": 6.4, "minInterval": 0, "silent": false, "triggerEvent": false, "splitLine": {"show": true, "lineStyle": {"show": false}}, "animation": true, "animationThreshold": 2000, "animationDuration": 1000, "animationEasing": "cubicOut", "animationDelay": 0, "animationDurationUpdate": 300, "animationEasingUpdate": "cubicOut", "animationDelayUpdate": 0}], "color": ["#9DC3E6", "#1F4E79", "#ED7D31"], "title": [{"show": true, "text": "抽水率 ARIMA 预测（未来 6 个月）", "target": "blank", "subtext": "MAPE 8.22%（朴素基准 7.58%）｜预测值稳定在 5.3%–5.4%", "subtarget": "blank", "left": "1%", "padding": 5, "itemGap": 10, "textAlign": "auto", "textVerticalAlign": "auto", "triggerEvent": false, "textStyle": {"color": "#1F2D3D", "fontSize": 14, "richInheritPlainLabel": true}, "subtextStyle": {"color": "#7F7F7F", "fontSize": 10, "richInheritPlainLabel": true}}], "grid": {"left": "8%", "right": "5%", "top": 68, "bottom": 62}}, "seasons": ["2010/11", "2011/12", "2012/13", "2013/14", "2014/15", "2015/16", "2016/17", "2017/18", "2018/19", "2019/20", "2020/21", "2021/22", "2022/23", "2023/24", "2024/25"], "leagues": ["英超", "德甲", "西甲", "意甲", "法甲", "荷甲", "葡超"], "colors": ["#1F4E79", "#ED7D31", "#70AD47", "#C00000", "#7030A0", "#2E76B6", "#FFC000"], "kpi_all": {"场次": 35981, "场均进球": 2.778, "抽水率": 5.61, "主胜率": 44.9}};
+const AGG = DATA.agg, ROI = DATA.roi, COL = DATA.colors;
+const SEASONS = DATA.seasons, LEAGUES = DATA.leagues;
+const charts = {};
+["trend","league","result","scatter","roi","forecast"].forEach(k =>
+  charts[k] = echarts.init(document.getElementById("c_" + k)));
+charts["forecast"].setOption(DATA.forecast, true);
+
+let curS = "全部", curL = "全部", pickLeague = null;
+
+document.getElementById("f_season").innerHTML =
+  `<option value="全部">全部赛季</option>` +
+  SEASONS.map(s => `<option value="${s}">${s}</option>`).join("");
+document.getElementById("f_league").innerHTML =
+  `<option value="全部">全部联赛</option>` +
+  LEAGUES.map(l => `<option value="${l}">${l}</option>`).join("");
+
+const colorOf = l => COL[LEAGUES.indexOf(l) % COL.length];
+const fmt = n => n.toLocaleString("en-US");
+
+function pick(){                       // 当前筛选下的行
+  return AGG.filter(r => (curS === "全部" || r["赛季"] === curS) &&
+                         (curL === "全部" || r["联赛"] === curL));
+}
+function wavg(rows, key){              // 按场次加权
+  const n = rows.reduce((a, r) => a + r["场次"], 0) || 1;
+  return rows.reduce((a, r) => a + r[key] * r["场次"], 0) / n;
+}
+function base(title, sub){
+  return {
+    backgroundColor: "transparent",
+    title: {text: title, subtext: sub, left: "1%",
+            textStyle: {fontSize: 14, color: "#1F2D3D"},
+            subtextStyle: {fontSize: 10, color: "#7F7F7F"}},
+    animationDuration: 600,
+    grid: {left: "9%", right: "7%", top: 66, bottom: 46},
+    tooltip: {trigger: "axis", axisPointer: {type: "shadow"}}
+  };
+}
+
+function drawTrend(){
+  // 趋势始终展示「当前联赛」的 15 季全历史，选中赛季高亮
+  const rows = AGG.filter(r => curL === "全部" || r["联赛"] === curL);
+  const byS = SEASONS.map(s => {
+    const sub = rows.filter(r => r["赛季"] === s);
+    const n = sub.reduce((a, r) => a + r["场次"], 0);
+    const g = sub.reduce((a, r) => a + r["场均进球"] * r["场次"], 0) / (n || 1);
+    return {s, n, g};
+  });
+  const o = base("赛季趋势", (curL === "全部" ? "柱=总场次（场）｜线=场均进球（球），全部联赛合计"
+                                            : `柱=总场次（场）｜线=场均进球（球），${curL}`) +
+                       (curS === "全部" ? "" : `｜高亮 ${curS}`));
+  o.xAxis = {type: "category", data: byS.map(d => d.s),
+             axisLabel: {fontSize: 9, rotate: 45}};
+  o.yAxis = [{type: "value", axisLabel: {fontSize: 9}},
+             {type: "value", axisLabel: {fontSize: 9},
+              splitLine: {show: false}, min: 2.3, max: 3.2}];
+  o.series = [
+    {type: "bar", name: "场次", data: byS.map(d => ({
+        value: d.n,
+        itemStyle: {color: (curS === "全部" || d.s === curS) ? "#1F4E79" : "#C9D6E4"}})),
+     itemStyle: {borderRadius: [3,3,0,0]}, barWidth: "58%"},
+    {type: "line", name: "场均进球", yAxisIndex: 1, smooth: true,
+     data: byS.map(d => +d.g.toFixed(3)), symbolSize: 6,
+     lineStyle: {width: 2.4, color: "#ED7D31"}, itemStyle: {color: "#ED7D31"}}
+  ];
+  o.legend = {top: 0, right: "2%", itemGap: 12, textStyle: {fontSize: 10}};
+  charts["trend"].setOption(o, true);
+}
+
+function drawLeague(){
+  const rows = AGG.filter(r => curS === "全部" || r["赛季"] === curS);
+  const d = LEAGUES.map(l => {
+    const sub = rows.filter(r => r["联赛"] === l);
+    const n = sub.reduce((a, r) => a + r["场次"], 0);
+    return {l, v: sub.reduce((a, r) => a + r["场均进球"] * r["场次"], 0) / (n || 1)};
+  }).sort((a, b) => a.v - b.v);
+  const o = base("联赛场均进球（点击下钻）", `${curS === "全部" ? "全部赛季" : curS}`);
+  o.grid = {left: "13%", right: "12%", top: 66, bottom: 34};
+  o.xAxis = {type: "value", name: "球", axisLabel: {fontSize: 9}};
+  o.yAxis = {type: "category", data: d.map(x => x.l), axisLabel: {fontSize: 9.5}};
+  o.series = [{type: "bar", data: d.map(x => ({
+      value: +x.v.toFixed(3),
+      itemStyle: {color: (pickLeague && pickLeague !== x.l) ? "#D8E2EC" : colorOf(x.l),
+                  borderRadius: [0,3,3,0]}})),
+    label: {show: true, position: "right", fontSize: 9, formatter: "{c}"},
+    barWidth: "58%"}];
+  o.tooltip = {trigger: "axis", axisPointer: {type: "shadow"}};
+  charts["league"].setOption(o, true);
+}
+
+function drawResult(){
+  const rows = pick();
+  const d = LEAGUES.map(l => {
+    const sub = rows.filter(r => r["联赛"] === l);
+    const n0 = sub.reduce((a, r) => a + r["场次"], 0), n = n0 || 1;
+    return {l, n: n0,
+            H: sub.reduce((a, r) => a + r["主胜率"] * r["场次"], 0) / n,
+            D: sub.reduce((a, r) => a + r["平局率"] * r["场次"], 0) / n,
+            A: sub.reduce((a, r) => a + r["客胜率"] * r["场次"], 0) / n};
+  }).filter(x => x.n > 0);
+  const o = base("赛果结构", "主胜 / 平局 / 客胜（按场次加权）");
+  o.grid = {left: "9%", right: "6%", top: 66, bottom: 40};
+  o.xAxis = {type: "category", data: d.map(x => x.l), axisLabel: {fontSize: 9}};
+  o.yAxis = {type: "value", max: 100, axisLabel: {fontSize: 9, formatter: "{value}%"}};
+  const mk = (name, key, col) => ({type: "bar", name, stack: "r", barWidth: "55%",
+    itemStyle: {color: col},
+    label: {show: true, fontSize: 8, color: "#fff",
+            formatter: p => p.value >= 8 ? p.value.toFixed(1) : ""},
+    data: d.map(x => +x[key].toFixed(2))});
+  o.series = [mk("主胜", "H", "#1F4E79"), mk("平局", "D", "#BFBFBF"), mk("客胜", "A", "#ED7D31")];
+  o.legend = {top: 0, right: "2%", itemGap: 12, textStyle: {fontSize: 10}};
+  charts["result"].setOption(o, true);
+}
+
+function drawScatter(){
+  const rows = AGG.filter(r => curS === "全部" || r["赛季"] === curS);
+  const o = base("抽水率 × 场均进球", "横轴=抽水率（%）｜纵轴=场均进球（球）｜气泡=场次｜颜色=联赛");
+  o.grid = {left: "10%", right: "6%", top: 66, bottom: 46};
+  o.xAxis = {type: "value", min: 3, max: 9, axisLabel: {fontSize: 9},
+             splitLine: {lineStyle: {color: "#EEF1F5"}}};
+  o.yAxis = {type: "value", min: 2.2, max: 3.5, axisLabel: {fontSize: 9},
+             splitLine: {lineStyle: {color: "#EEF1F5"}}};
+  o.series = LEAGUES.map(l => ({
+    type: "scatter", name: l,
+    symbolSize: d => Math.max(8, Math.sqrt(d[2]) / 1.6),
+    itemStyle: {color: colorOf(l), opacity: 0.78},
+    data: rows.filter(r => r["联赛"] === l).map(r =>
+      [+r["抽水率"].toFixed(2), +r["场均进球"].toFixed(2), r["场次"]])
+  }));
+  o.legend = {top: 0, right: "2%", itemGap: 10, textStyle: {fontSize: 9.5}};
+  o.tooltip = {trigger: "item",
+    formatter: p => `${p.seriesName}<br/>抽水率 ${p.value[0]}%｜场均进球 ${p.value[1]}<br/>场次 ${fmt(p.value[2])}`};
+  charts["scatter"].setOption(o, true);
+}
+
+function drawRoi(){
+  const rows = ROI.filter(r => curS === "全部" || r["赛季"] === curS);
+  const tiers = ["冷门局", "偏冷", "偏热", "大热"];
+  const d = tiers.map(t => {
+    const sub = rows.filter(r => r["档位"] === t);
+    return sub.length ? sub.reduce((a, r) => a + r["ROI"], 0) / sub.length : 0;
+  });
+  const o = base("赔率档位 ROI", `${curS === "全部" ? "15 季均值" : curS}｜单位注码，0 为盈亏平衡`);
+  o.grid = {left: "11%", right: "6%", top: 66, bottom: 38};
+  o.xAxis = {type: "category", data: tiers, axisLabel: {fontSize: 10}};
+  const lo = Math.floor(Math.min(0, ...d) - 1);
+  o.yAxis = {type: "value", name: "ROI %", nameGap: 16, axisLabel: {fontSize: 9},
+             max: 1.2, min: lo};
+  o.series = [{type: "bar", barWidth: "52%",
+    data: d.map(v => ({value: +v.toFixed(2),
+      itemStyle: {color: v >= 0 ? "#70AD47" : "#C00000", borderRadius: [3,3,0,0]}})),
+    label: {show: true, position: "insideTop", fontSize: 9.5,
+            color: "#FFFFFF", fontWeight: "bold", formatter: "{c}%", offset: [0, 6]},
+    markLine: {silent: true, symbol: "none", lineStyle: {color: "#404040", type: "solid"},
+               data: [{yAxis: 0}], label: {show: false}}}];
+  o.tooltip = {trigger: "axis", axisPointer: {type: "shadow"}};
+  charts["roi"].setOption(o, true);
+}
+
+function renderKPI(){
+  const rows = pick();
+  const n = rows.reduce((a, r) => a + r["场次"], 0);
+  document.getElementById("k_n").innerHTML = fmt(n) + "<small>场</small>";
+  document.getElementById("k_g").innerHTML = wavg(rows, "场均进球").toFixed(3) + "<small>球</small>";
+  document.getElementById("k_v").innerHTML = wavg(rows, "抽水率").toFixed(2) + "<small>%</small>";
+  document.getElementById("k_h").innerHTML = wavg(rows, "主胜率").toFixed(2) + "<small>%</small>";
+}
+
+function renderTable(){
+  let rows = pick();
+  if (pickLeague) rows = rows.filter(r => r["联赛"] === pickLeague);
+  rows = rows.slice().sort((a, b) => (a["赛季"] < b["赛季"] ? 1 : a["赛季"] > b["赛季"] ? -1 : 0));
+  document.getElementById("tbody").innerHTML = rows.map(r =>
+    `<tr><td>${r["赛季"]}</td><td>${r["联赛"]}</td>
+     <td class="num">${fmt(r["场次"])}</td><td class="num">${r["场均进球"].toFixed(3)}</td>
+     <td class="num">${r["抽水率"].toFixed(2)}</td><td class="num">${r["主胜率"].toFixed(2)}</td>
+     <td class="num">${r["平局率"].toFixed(2)}</td><td class="num">${r["大球率"].toFixed(2)}</td></tr>`).join("");
+  document.getElementById("tbl_tag").textContent =
+    (curS === "全部" ? "全部赛季" : curS) + " · " +
+    (curL === "全部" ? "全部联赛" : curL) +
+    (pickLeague ? " · 下钻 " + pickLeague : "") + `（${rows.length} 行）`;
+}
+
+function refresh(){
+  renderKPI(); drawTrend(); drawLeague(); drawResult();
+  drawScatter(); drawRoi(); renderTable();
+}
+
+document.getElementById("f_season").addEventListener("change", e => {
+  curS = e.target.value; pickLeague = null; refresh();
+});
+document.getElementById("f_league").addEventListener("change", e => {
+  curL = e.target.value; pickLeague = null; refresh();
+});
+charts["league"].on("click", p => {
+  pickLeague = (pickLeague === p.name) ? null : p.name;
+  drawLeague(); renderTable();
+});
+
+refresh();
+window.addEventListener("resize", () => { for (const k in charts) charts[k].resize(); });
+</script>
+</body>
+</html>
